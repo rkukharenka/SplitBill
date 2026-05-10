@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__todoist__add-projects",
+      "mcp__todoist__add-sections",
+      "mcp__todoist__add-tasks",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs"
+    ]
+  }
+}
