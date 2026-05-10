@@ -30,6 +30,9 @@ CREATE TABLE participants (
     joined_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_identity CHECK (
         (telegram_id IS NOT NULL) OR (guest_name IS NOT NULL)
+    ),
+    CONSTRAINT chk_identity_exclusive CHECK (
+        NOT (telegram_id IS NOT NULL AND guest_name IS NOT NULL)
     )
 );
 
