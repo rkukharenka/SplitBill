@@ -26,7 +26,7 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
     // JDBC driver only for Flyway (not for runtime use)
-    implementation("org.postgresql:postgresql")
+    runtimeOnly("org.postgresql:postgresql")
 
     // Kotlin & coroutines
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
