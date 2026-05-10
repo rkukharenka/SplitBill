@@ -1,0 +1,22 @@
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/splitbill
+    username: splitbill
+    password: splitbill
+  flyway:
+    url: jdbc:postgresql://localhost:5432/splitbill
+    user: splitbill
+    password: splitbill
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:change-me}
+    username: ${TELEGRAM_BOT_USERNAME:change_me_bot}
+    webhook-url: ${TELEGRAM_WEBHOOK_URL:}
+
+claude:
+  api-key: ${ANTHROPIC_API_KEY:change-me}
