@@ -62,4 +62,6 @@ kotlin {
 
 tasks.test {
     useJUnitPlatform()
+    environment("DOCKER_HOST", "unix:///home/ryhor/.docker/desktop/docker.sock")
+    environment("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/home/ryhor/.docker/desktop/docker.sock")
 }
