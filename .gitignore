@@ -46,3 +46,6 @@ bin/
 
 ### Environment Variables ###
 .env
+
+### Frontend (Webapp) ###
+webapp/node_modules/
