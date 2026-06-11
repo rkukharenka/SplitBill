@@ -17,6 +17,7 @@ telegram:
     token: ${TELEGRAM_BOT_TOKEN:change-me}
     username: ${TELEGRAM_BOT_USERNAME:change_me_bot}
     webhook-url: ${TELEGRAM_WEBHOOK_URL:}
+    webapp-url: ${TELEGRAM_WEBAPP_URL:http://localhost:8080}
 
 claude:
   api-key: ${ANTHROPIC_API_KEY:change-me}

@@ -21,6 +21,7 @@ telegram:
     token: ${TELEGRAM_BOT_TOKEN}
     username: ${TELEGRAM_BOT_USERNAME}
     webhook-url: ${TELEGRAM_WEBHOOK_URL:}
+    webapp-url: ${TELEGRAM_WEBAPP_URL:}
 
 claude:
   api-key: ${ANTHROPIC_API_KEY}

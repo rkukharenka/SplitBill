@@ -3,6 +3,7 @@ telegram:
     token: test-token-stub
     username: test_bot_stub
     webhook-url: ""
+    webapp-url: http://localhost:8080
 
 claude:
   api-key: test-api-key-stub
