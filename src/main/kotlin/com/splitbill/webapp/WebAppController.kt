@@ -117,6 +117,80 @@ class WebAppController(
         return itemRepository.saveAll(entities).collectList().awaitSingle().map { it.toDto() }
     }
 
+    @PutMapping("/{id}/claims")
+    suspend fun updateClaims(
+        @PathVariable id: UUID,
+        @RequestBody request: UpdateClaimsRequest,
+        exchange: ServerWebExchange
+    ): List<UUID> {
+        val userId = exchange.telegramUserId()
+        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Participant not found — open the session first")
+
+        claimRepository.deleteByParticipantIdAndSessionId(participant.id, id).awaitSingleOrNull()
+
+        val newClaims = request.itemIds.map { itemId ->
+            Claim(id = UUID.randomUUID(), itemId = itemId, participantId = participant.id)
+        }
+        if (newClaims.isNotEmpty()) {
+            claimRepository.saveAll(newClaims).collectList().awaitSingle()
+        }
+
+        return request.itemIds
+    }
+
+    @GetMapping("/{id}/results")
+    suspend fun getResults(@PathVariable id: UUID, exchange: ServerWebExchange): ResultsDto {
+        exchange.telegramUserId() // auth check only
+
+        val participants = participantRepository.findBySessionId(id).collectList().awaitSingle()
+        val items = itemRepository.findBySessionId(id).collectList().awaitSingle()
+        val allClaims = claimRepository.findAllBySessionId(id).collectList().awaitSingle()
+
+        val claimsByItem: Map<UUID, List<Claim>> = allClaims.groupBy { it.itemId }
+        val claimsByParticipant: Map<UUID, List<Claim>> = allClaims.groupBy { it.participantId }
+
+        val summaries = participants.map { p ->
+            val totalAmount = (claimsByParticipant[p.id] ?: emptyList())
+                .mapNotNull { claim -> items.find { it.id == claim.itemId } }
+                .sumOf { item ->
+                    val claimCount = (claimsByItem[item.id]?.size ?: 1).coerceAtLeast(1)
+                    item.price.multiply(BigDecimal(item.quantity))
+                        .divide(BigDecimal(claimCount), 2, RoundingMode.HALF_UP)
+                }
+            ParticipantSummaryDto(
+                id = p.id,
+                displayName = p.guestName ?: "User ${p.telegramId}",
+                totalAmount = totalAmount
+            )
+        }
+
+        val balances = participants.map { p ->
+            val paid = items.filter { it.uploadedBy == p.id }
+                .sumOf { it.price.multiply(BigDecimal(it.quantity)) }
+
+            val owedFromPaidItems = (claimsByParticipant[p.id] ?: emptyList())
+                .mapNotNull { claim -> items.find { it.id == claim.itemId && it.uploadedBy != null } }
+                .sumOf { item ->
+                    val claimCount = (claimsByItem[item.id]?.size ?: 1).coerceAtLeast(1)
+                    item.price.multiply(BigDecimal(item.quantity))
+                        .divide(BigDecimal(claimCount), 2, RoundingMode.HALF_UP)
+                }
+
+            ParticipantBalance(
+                participantId = p.id,
+                displayName = p.guestName ?: "User ${p.telegramId}",
+                balance = paid.subtract(owedFromPaidItems)
+            )
+        }
+
+        val transfers = debtCalculator.calculate(balances).map { t ->
+            TransferDto(t.fromId, t.fromName, t.toId, t.toName, t.amount)
+        }
+
+        return ResultsDto(participants = summaries, transfers = transfers)
+    }
+
     private fun ServerWebExchange.telegramUserId(): Long =
         getAttribute<Long>("telegramUserId")
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
