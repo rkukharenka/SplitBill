@@ -65,3 +65,20 @@ tasks.test {
     environment("DOCKER_HOST", "unix:///home/ryhor/.docker/desktop/docker.sock")
     environment("TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE", "/home/ryhor/.docker/desktop/docker.sock")
 }
+
+val npmBuild by tasks.registering(Exec::class) {
+    workingDir("webapp")
+    commandLine("npm", "run", "build")
+    inputs.dir("webapp/src")
+    inputs.file("webapp/package.json")
+    inputs.file("webapp/vite.config.ts")
+    outputs.dir("src/main/resources/static/webapp")
+}
+
+tasks.named("bootJar") {
+    dependsOn(npmBuild)
+}
+
+tasks.named("processResources") {
+    dependsOn(npmBuild)
+}
