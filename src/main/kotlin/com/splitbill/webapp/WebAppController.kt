@@ -53,6 +53,70 @@ class WebAppController(
         )
     }
 
+    @PostMapping("/{id}/items")
+    suspend fun addItem(
+        @PathVariable id: UUID,
+        @RequestBody request: AddItemRequest,
+        exchange: ServerWebExchange
+    ): ItemDto {
+        val userId = exchange.telegramUserId()
+        val session = sessionRepository.findById(id).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+
+        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
+            ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
+
+        val entity = ReceiptItemEntity(
+            id = UUID.randomUUID(),
+            sessionId = session.id,
+            name = request.name,
+            price = request.price,
+            quantity = request.quantity,
+            uploadedBy = participant.id
+        )
+        return itemRepository.save(entity).awaitSingle().toDto()
+    }
+
+    @PostMapping("/{id}/photo", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    suspend fun uploadPhoto(
+        @PathVariable id: UUID,
+        @RequestPart("file") filePart: FilePart,
+        exchange: ServerWebExchange
+    ): List<ItemDto> {
+        val userId = exchange.telegramUserId()
+        val session = sessionRepository.findById(id).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+
+        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
+            ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
+
+        val bytes = filePart.content()
+            .map { buf ->
+                val bytes = ByteArray(buf.readableByteCount())
+                buf.read(bytes)
+                bytes
+            }
+            .reduce { a, b -> a + b }
+            .awaitSingle()
+
+        val contentType = filePart.headers().contentType?.toString() ?: "image/jpeg"
+        val result = parserService.parse(bytes, contentType)
+
+        if (result.items.isEmpty()) throw ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No items recognized")
+
+        val entities = result.items.map { item ->
+            ReceiptItemEntity(
+                id = UUID.randomUUID(),
+                sessionId = session.id,
+                name = item.name,
+                price = item.price,
+                quantity = item.quantity,
+                uploadedBy = participant.id
+            )
+        }
+        return itemRepository.saveAll(entities).collectList().awaitSingle().map { it.toDto() }
+    }
+
     private fun ServerWebExchange.telegramUserId(): Long =
         getAttribute<Long>("telegramUserId")
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
