@@ -30,7 +30,7 @@ class NewSplitCommand(
             )
         }
 
-        val webappUrl = "${botProperties.webappUrl}/webapp/?session=${session.id}"
+        val webappUrl = "${botProperties.webappUrl}/webapp/index.html?session=${session.id}"
 
         val button = InlineKeyboardButton.builder()
             .text("Открыть приложение")
