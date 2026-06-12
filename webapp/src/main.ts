@@ -18,13 +18,10 @@ async function main() {
     return
   }
 
-  await renderSession(app, sessionId, () => {
-    renderResults(app, sessionId, () => {
-      renderSession(app, sessionId, () => {
-        renderResults(app, sessionId, () => {})
-      })
-    })
-  })
+  // mutually recursive navigation — supports unlimited back-and-forth between screens
+  function showSession() { renderSession(app, sessionId!, showResults) }
+  function showResults() { renderResults(app, sessionId!, showSession) }
+  showSession()
 }
 
 main().catch(err => {
