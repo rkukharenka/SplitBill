@@ -2,6 +2,7 @@ package com.splitbill.bot
 
 import com.splitbill.config.BotProperties
 import jakarta.annotation.PostConstruct
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Profile
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -18,14 +19,20 @@ class WebhookController(
     private val telegramClient: TelegramClient,
     private val props: BotProperties
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     @PostConstruct
     fun registerWebhook() {
-        telegramClient.execute(
-            SetWebhook.builder()
-                .url("${props.webhookUrl}/webhook")
-                .build()
-        )
+        try {
+            telegramClient.execute(
+                SetWebhook.builder()
+                    .url("${props.webhookUrl}/webhook")
+                    .build()
+            )
+            log.info("Webhook registered: ${props.webhookUrl}/webhook")
+        } catch (e: Exception) {
+            log.warn("Webhook registration failed on startup (will retry on next restart): ${e.message}")
+        }
     }
 
     @PostMapping("/webhook")
