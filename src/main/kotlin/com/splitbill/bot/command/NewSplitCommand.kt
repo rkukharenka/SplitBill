@@ -4,6 +4,7 @@ import com.splitbill.config.BotProperties
 import com.splitbill.session.SplitSessionService
 import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Component
+import org.telegram.telegrambots.meta.api.methods.GetMe
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
@@ -18,6 +19,13 @@ class NewSplitCommand(
     private val sessionService: SplitSessionService,
     private val botProperties: BotProperties
 ) {
+    // Resolve the real bot username from the token via getMe (cached), so the startapp
+    // deep link always points at THIS bot — not whatever TELEGRAM_BOT_USERNAME env holds.
+    private val botUsername: String by lazy {
+        runCatching { telegramClient.execute(GetMe()).userName }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?.removePrefix("@") ?: botProperties.username.removePrefix("@")
+    }
+
     fun handle(update: Update) {
         val chatId = update.message.chatId
         val creatorId = update.message.from.id
@@ -38,10 +46,9 @@ class NewSplitCommand(
                 .webApp(WebAppInfo("${botProperties.webappUrl}/webapp/index.html?session=${session.id}"))
                 .build()
         } else {
-            val username = botProperties.username.removePrefix("@")
             InlineKeyboardButton.builder()
                 .text("Открыть приложение")
-                .url("https://t.me/$username?startapp=${session.id}")
+                .url("https://t.me/$botUsername?startapp=${session.id}")
                 .build()
         }
 
