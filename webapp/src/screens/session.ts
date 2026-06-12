@@ -1,5 +1,5 @@
 import type { SessionDto, ItemDto } from '../types'
-import { getSession, addItem, uploadPhoto, updateClaims } from '../api'
+import { getSession, addItem, uploadPhoto, setItemAssignment, addParticipant } from '../api'
 import { createAddItemModal } from '../components/addItemModal'
 
 export async function renderSession(container: HTMLElement, sessionId: string, onResults: () => void) {
@@ -13,8 +13,6 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
     return
   }
 
-  const claimedIds = new Set<string>(session.myClaimedItemIds)
-
   function formatPrice(item: ItemDto): string {
     const total = item.price * item.quantity
     return item.quantity > 1
@@ -22,17 +20,29 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
       : `${item.price} ${session.currency}`
   }
 
-  function myTotal(): number {
-    return session.items
-      .filter(i => claimedIds.has(i.id))
-      .reduce((sum, i) => sum + i.price * i.quantity, 0)
+  function rosterOptions(selectedId: string | null): string {
+    return session.participants
+      .map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${p.displayName}</option>`)
+      .join('')
+  }
+
+  async function persist(item: ItemDto) {
+    try {
+      const saved = await setItemAssignment(sessionId, item.id, item.payerId ?? session.myParticipantId, item.sharerIds)
+      item.payerId = saved.payerId
+      item.sharerIds = saved.sharerIds
+    } catch (e) {
+      alert(`Не удалось сохранить: ${(e as Error).message}`)
+      render()
+    }
   }
 
   function render() {
     container.innerHTML = `
       <div style="padding-bottom:80px">
         <h2 style="margin-bottom:4px">Счёт</h2>
-        <p style="color:#888;margin-bottom:16px">${session.currency} · ${session.status}</p>
+        <p style="color:#888;margin-bottom:12px">${session.currency} · ${session.status}</p>
+        <div id="roster" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px"></div>
         <div style="display:flex;gap:8px;margin-bottom:16px">
           <label style="flex:1">
             <button id="btn-photo" style="width:100%;padding:10px;border:1px dashed #ccc;border-radius:8px;background:transparent;font-size:14px">📷 Загрузить чек</button>
@@ -42,38 +52,76 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
         </div>
         <div id="items-list"></div>
         <div style="position:fixed;bottom:0;left:0;right:0;padding:16px;background:var(--tg-theme-bg-color,#fff);border-top:1px solid #eee;max-width:480px;margin:0 auto">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span>Мои позиции: <b>${myTotal().toFixed(2)} ${session.currency}</b></span>
-            <button id="btn-results" style="padding:10px 16px;border:none;border-radius:8px;background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff);font-size:14px">Итоги →</button>
-          </div>
+          <button id="btn-results" style="width:100%;padding:12px;border:none;border-radius:8px;background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff);font-size:15px">Итоги →</button>
         </div>
       </div>
     `
 
+    const roster = container.querySelector('#roster')!
+    session.participants.forEach(p => {
+      const chip = document.createElement('span')
+      chip.style.cssText = 'padding:4px 10px;border-radius:14px;background:#f0f0f0;font-size:13px'
+      chip.textContent = p.isGuest ? `👤 ${p.displayName}` : p.displayName
+      roster.appendChild(chip)
+    })
+    const addGuestBtn = document.createElement('button')
+    addGuestBtn.textContent = '+ Гость'
+    addGuestBtn.style.cssText = 'padding:4px 10px;border-radius:14px;border:1px dashed #ccc;background:transparent;font-size:13px'
+    addGuestBtn.addEventListener('click', async () => {
+      const name = prompt('Имя гостя')?.trim()
+      if (!name) return
+      try {
+        const guest = await addParticipant(sessionId, name)
+        session.participants.push(guest)
+        render()
+      } catch (e) {
+        alert(`Ошибка: ${(e as Error).message}`)
+      }
+    })
+    roster.appendChild(addGuestBtn)
+
     const list = container.querySelector('#items-list')!
     session.items.forEach(item => {
       const row = document.createElement('div')
-      row.style.cssText = 'display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #f0f0f0'
-      const checked = claimedIds.has(item.id)
+      row.style.cssText = 'padding:12px 0;border-bottom:1px solid #f0f0f0'
       row.innerHTML = `
-        <input type="checkbox" id="item-${item.id}" ${checked ? 'checked' : ''} style="width:20px;height:20px;margin-right:12px;flex-shrink:0" />
-        <label for="item-${item.id}" style="flex:1;cursor:pointer">
-          <div style="font-size:15px">${item.name}</div>
-          <div style="font-size:13px;color:#888">${formatPrice(item)}</div>
-        </label>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:15px">${item.name}</span>
+          <span style="font-size:13px;color:#888">${formatPrice(item)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-size:12px;color:#888">Платил:</span>
+          <select class="payer-select" style="flex:1;padding:4px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+            ${rosterOptions(item.payerId)}
+          </select>
+        </div>
+        <div class="sharers" style="display:flex;flex-wrap:wrap;gap:8px"></div>
       `
-      const checkbox = row.querySelector('input')!
-      checkbox.addEventListener('change', async () => {
-        if (checkbox.checked) claimedIds.add(item.id)
-        else claimedIds.delete(item.id)
-        container.querySelector<HTMLElement>('b')!.textContent = `${myTotal().toFixed(2)} ${session.currency}`
-        try {
-          await updateClaims(sessionId, Array.from(claimedIds))
-        } catch (e) {
-          checkbox.checked = !checkbox.checked
-          if (checkbox.checked) { claimedIds.add(item.id) } else { claimedIds.delete(item.id) }
-        }
+
+      const payerSelect = row.querySelector<HTMLSelectElement>('.payer-select')!
+      payerSelect.addEventListener('change', () => {
+        item.payerId = payerSelect.value
+        persist(item)
       })
+
+      const sharers = row.querySelector('.sharers')!
+      session.participants.forEach(p => {
+        const label = document.createElement('label')
+        label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:13px'
+        const checked = item.sharerIds.includes(p.id)
+        label.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''} style="width:16px;height:16px" /> ${p.displayName}`
+        const cb = label.querySelector('input')!
+        cb.addEventListener('change', () => {
+          if (cb.checked) {
+            if (!item.sharerIds.includes(p.id)) item.sharerIds.push(p.id)
+          } else {
+            item.sharerIds = item.sharerIds.filter(idv => idv !== p.id)
+          }
+          persist(item)
+        })
+        sharers.appendChild(label)
+      })
+
       list.appendChild(row)
     })
 

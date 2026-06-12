@@ -1,18 +1,25 @@
+export interface ParticipantDto {
+  id: string
+  displayName: string
+  isGuest: boolean
+}
+
 export interface ItemDto {
   id: string
   name: string
   price: number
   quantity: number
-  uploadedByParticipantId: string | null
+  payerId: string | null
+  sharerIds: string[]
 }
 
 export interface SessionDto {
   id: string
   currency: string
   status: string
+  participants: ParticipantDto[]
   items: ItemDto[]
   myParticipantId: string
-  myClaimedItemIds: string[]
 }
 
 export interface ParticipantSummaryDto {
