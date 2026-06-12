@@ -78,7 +78,12 @@
       "Bash(npm run *)",
       "Bash(npx tsc *)",
       "Bash(./gradlew clean *)",
-      "Bash(curl -s http://localhost:8080/actuator/health)"
+      "Bash(curl -s http://localhost:8080/actuator/health)",
+      "Bash(ssh *)",
+      "Bash(scp -o StrictHostKeyChecking=no /home/ryhor/IdeaProjects/SplitBill/docker-compose.prod.yml root@5.231.106.83:/opt/splitbill/)",
+      "Bash(scp -o StrictHostKeyChecking=no /home/ryhor/IdeaProjects/SplitBill/nginx/default.conf.template root@5.231.106.83:/opt/splitbill/nginx/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://split-buddy.kra-app.cc/actuator/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://5.231.106.83/actuator/health)"
     ],
     "deny": [
       "Read(.env)",
