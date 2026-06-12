@@ -30,12 +30,20 @@ class NewSplitCommand(
             )
         }
 
-        val webappUrl = "${botProperties.webappUrl}/webapp/index.html?session=${session.id}"
-
-        val button = InlineKeyboardButton.builder()
-            .text("Открыть приложение")
-            .webApp(WebAppInfo(webappUrl))
-            .build()
+        // Inline web_app buttons are only valid in PRIVATE chats. In groups/channels Telegram
+        // rejects them with BUTTON_TYPE_INVALID, so launch the Mini App via a startapp deep link.
+        val button = if (chatId > 0) {
+            InlineKeyboardButton.builder()
+                .text("Открыть приложение")
+                .webApp(WebAppInfo("${botProperties.webappUrl}/webapp/index.html?session=${session.id}"))
+                .build()
+        } else {
+            val username = botProperties.username.removePrefix("@")
+            InlineKeyboardButton.builder()
+                .text("Открыть приложение")
+                .url("https://t.me/$username?startapp=${session.id}")
+                .build()
+        }
 
         val message = SendMessage.builder()
             .chatId(chatId.toString())

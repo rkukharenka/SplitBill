@@ -3,7 +3,9 @@ import { renderResults } from './screens/results'
 
 function getSessionId(): string | null {
   const params = new URLSearchParams(window.location.search)
-  return params.get('session')
+  // ?session= is used by the private-chat web_app button; start_param by the
+  // group/channel startapp deep link (https://t.me/<bot>?startapp=<sessionId>)
+  return params.get('session') ?? window.Telegram?.WebApp?.initDataUnsafe?.start_param ?? null
 }
 
 async function main() {
