@@ -11,7 +11,7 @@ COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 RUN ./gradlew dependencies --no-daemon -q 2>/dev/null || true
 
 COPY webapp webapp
-RUN cd webapp && npm ci
+RUN cd webapp && npm ci --prefer-offline
 
 COPY src src
 RUN ./gradlew bootJar --no-daemon -x test -q
