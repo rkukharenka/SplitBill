@@ -37,19 +37,23 @@ class WebAppController(
         val session = sessionRepository.findById(id).awaitSingleOrNull()
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
+        // auto-create caller's participant BEFORE listing the roster so they appear in it
+        val me = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
             ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
 
+        val participants = participantRepository.findBySessionId(id).collectList().awaitSingle()
         val items = itemRepository.findBySessionId(id).collectList().awaitSingle()
-        val myClaims = claimRepository.findByParticipantId(participant.id).collectList().awaitSingle()
+        val claims = claimRepository.findAllBySessionId(id).collectList().awaitSingle()
+        val sharersByItem: Map<UUID, List<UUID>> =
+            claims.groupBy({ it.itemId }, { it.participantId })
 
         return SessionDto(
             id = session.id,
             currency = session.currency,
             status = session.status,
-            items = items.map { it.toDto() },
-            myParticipantId = participant.id,
-            myClaimedItemIds = myClaims.map { it.itemId }
+            participants = participants.map { it.toDto() },
+            items = items.map { it.toDto(sharersByItem[it.id] ?: emptyList()) },
+            myParticipantId = me.id
         )
     }
 
@@ -74,7 +78,7 @@ class WebAppController(
             quantity = request.quantity,
             uploadedBy = participant.id
         )
-        return itemRepository.save(entity).awaitSingle().toDto()
+        return itemRepository.save(entity).awaitSingle().toDto(emptyList())
     }
 
     @PostMapping("/{id}/photo", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -114,29 +118,52 @@ class WebAppController(
                 uploadedBy = participant.id
             )
         }
-        return itemRepository.saveAll(entities).collectList().awaitSingle().map { it.toDto() }
+        return itemRepository.saveAll(entities).collectList().awaitSingle().map { it.toDto(emptyList()) }
     }
 
-    @PutMapping("/{id}/claims")
-    suspend fun updateClaims(
+    @PostMapping("/{id}/participants")
+    suspend fun addParticipant(
         @PathVariable id: UUID,
-        @RequestBody request: UpdateClaimsRequest,
+        @RequestBody request: AddParticipantRequest,
         exchange: ServerWebExchange
-    ): List<UUID> {
-        val userId = exchange.telegramUserId()
-        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Participant not found — open the session first")
+    ): ParticipantDto {
+        exchange.telegramUserId() // auth check
+        val name = request.name.trim()
+        if (name.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name required")
+        sessionRepository.findById(id).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        return participantRepository.save(Participant.guest(id, name)).awaitSingle().toDto()
+    }
 
-        claimRepository.deleteByParticipantIdAndSessionId(participant.id, id).awaitSingleOrNull()
+    @PutMapping("/{id}/items/{itemId}/assignment")
+    suspend fun setAssignment(
+        @PathVariable id: UUID,
+        @PathVariable itemId: UUID,
+        @RequestBody request: ItemAssignmentRequest,
+        exchange: ServerWebExchange
+    ): ItemDto {
+        exchange.telegramUserId() // auth check
+        val item = itemRepository.findById(itemId).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        if (item.sessionId != id) throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-        val newClaims = request.itemIds.map { itemId ->
-            Claim(id = UUID.randomUUID(), itemId = itemId, participantId = participant.id)
+        val rosterIds = participantRepository.findBySessionId(id).collectList().awaitSingle()
+            .map { it.id }.toSet()
+        if (request.payerId !in rosterIds)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "payer not in session")
+        val sharerIds = request.sharerIds.distinct()
+        if (!rosterIds.containsAll(sharerIds))
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "sharer not in session")
+
+        val updated = item.copy(uploadedBy = request.payerId)
+        itemRepository.save(updated).awaitSingle()
+
+        claimRepository.deleteByItemId(itemId).awaitSingleOrNull()
+        if (sharerIds.isNotEmpty()) {
+            claimRepository.saveAll(sharerIds.map { Claim.create(itemId, it) })
+                .collectList().awaitSingle()
         }
-        if (newClaims.isNotEmpty()) {
-            claimRepository.saveAll(newClaims).collectList().awaitSingle()
-        }
-
-        return request.itemIds
+        return updated.toDto(sharerIds)
     }
 
     @GetMapping("/{id}/results")
@@ -195,5 +222,9 @@ class WebAppController(
         getAttribute<Long>("telegramUserId")
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
 
-    private fun ReceiptItemEntity.toDto() = ItemDto(id, name, price, quantity, uploadedBy)
+    private fun ReceiptItemEntity.toDto(sharerIds: List<UUID>) =
+        ItemDto(id, name, price, quantity, uploadedBy, sharerIds)
+
+    private fun Participant.toDto() =
+        ParticipantDto(id, guestName ?: "User $telegramId", guestName != null)
 }

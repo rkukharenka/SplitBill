@@ -17,6 +17,10 @@ interface ClaimRepository : R2dbcRepository<Claim, UUID> {
     fun findAllBySessionId(sessionId: UUID): Flux<Claim>
 
     @Modifying
+    @Query("DELETE FROM claims WHERE item_id = :itemId")
+    fun deleteByItemId(itemId: UUID): Mono<Long>
+
+    @Modifying
     @Query("DELETE FROM claims WHERE participant_id = :participantId AND item_id IN (SELECT id FROM receipt_items WHERE session_id = :sessionId)")
     fun deleteByParticipantIdAndSessionId(participantId: UUID, sessionId: UUID): Mono<Long>
 }

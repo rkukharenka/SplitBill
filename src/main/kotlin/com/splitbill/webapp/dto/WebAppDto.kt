@@ -7,9 +7,15 @@ data class SessionDto(
     val id: UUID,
     val currency: String,
     val status: String,
+    val participants: List<ParticipantDto>,
     val items: List<ItemDto>,
-    val myParticipantId: UUID,
-    val myClaimedItemIds: List<UUID>
+    val myParticipantId: UUID
+)
+
+data class ParticipantDto(
+    val id: UUID,
+    val displayName: String,
+    val isGuest: Boolean
 )
 
 data class ItemDto(
@@ -17,7 +23,8 @@ data class ItemDto(
     val name: String,
     val price: BigDecimal,
     val quantity: Int,
-    val uploadedByParticipantId: UUID?
+    val payerId: UUID?,
+    val sharerIds: List<UUID>
 )
 
 data class AddItemRequest(
@@ -26,8 +33,13 @@ data class AddItemRequest(
     val quantity: Int = 1
 )
 
-data class UpdateClaimsRequest(
-    val itemIds: List<UUID>
+data class AddParticipantRequest(
+    val name: String
+)
+
+data class ItemAssignmentRequest(
+    val payerId: UUID,
+    val sharerIds: List<UUID>
 )
 
 data class ResultsDto(
