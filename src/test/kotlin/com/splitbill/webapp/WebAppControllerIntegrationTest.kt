@@ -171,4 +171,64 @@ class WebAppControllerIntegrationTest {
             .exchange()
             .expectStatus().isBadRequest
     }
+
+    @Test
+    fun `update item changes fields`() {
+        val session = runBlocking {
+            sessionRepository.save(SplitSession.create(creatorTelegramId = 4L, currency = "BYN")).awaitSingle()
+        }
+        val initData = WebAppAuthFilterTest.buildValidInitData(BOT_TOKEN, userId = 4L)
+        client.get().uri("/api/webapp/sessions/${session.id}")
+            .header("X-Telegram-Init-Data", initData).exchange().expectStatus().isOk
+
+        val addBody = client.post()
+            .uri("/api/webapp/sessions/${session.id}/items")
+            .header("X-Telegram-Init-Data", initData)
+            .bodyValue(mapOf("name" to "Tea", "price" to 3.0, "quantity" to 1))
+            .exchange().expectStatus().isOk
+            .expectBody().returnResult().responseBody!!.let { String(it) }
+        val itemId = Regex("\"id\":\"([0-9a-f-]+)\"").find(addBody)!!.groupValues[1]
+
+        client.put()
+            .uri("/api/webapp/sessions/${session.id}/items/$itemId")
+            .header("X-Telegram-Init-Data", initData)
+            .bodyValue(mapOf("name" to "Green Tea", "price" to 4.5, "quantity" to 2))
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.name").isEqualTo("Green Tea")
+            .jsonPath("$.quantity").isEqualTo(2)
+    }
+
+    @Test
+    fun `delete item removes it`() {
+        val session = runBlocking {
+            sessionRepository.save(SplitSession.create(creatorTelegramId = 5L, currency = "BYN")).awaitSingle()
+        }
+        val initData = WebAppAuthFilterTest.buildValidInitData(BOT_TOKEN, userId = 5L)
+        client.get().uri("/api/webapp/sessions/${session.id}")
+            .header("X-Telegram-Init-Data", initData).exchange().expectStatus().isOk
+
+        val addBody = client.post()
+            .uri("/api/webapp/sessions/${session.id}/items")
+            .header("X-Telegram-Init-Data", initData)
+            .bodyValue(mapOf("name" to "Cake", "price" to 8.0, "quantity" to 1))
+            .exchange().expectStatus().isOk
+            .expectBody().returnResult().responseBody!!.let { String(it) }
+        val itemId = Regex("\"id\":\"([0-9a-f-]+)\"").find(addBody)!!.groupValues[1]
+
+        client.delete()
+            .uri("/api/webapp/sessions/${session.id}/items/$itemId")
+            .header("X-Telegram-Init-Data", initData)
+            .exchange()
+            .expectStatus().isOk
+
+        client.get()
+            .uri("/api/webapp/sessions/${session.id}")
+            .header("X-Telegram-Init-Data", initData)
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.items.length()").isEqualTo(0)
+    }
 }

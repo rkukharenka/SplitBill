@@ -163,6 +163,43 @@ class WebAppController(
         return updated.toDto(sharerIds)
     }
 
+    @PutMapping("/{id}/items/{itemId}")
+    suspend fun updateItem(
+        @PathVariable id: UUID,
+        @PathVariable itemId: UUID,
+        @RequestBody request: AddItemRequest,
+        exchange: ServerWebExchange
+    ): ItemDto {
+        exchange.telegramUserId() // auth check
+        val item = itemRepository.findById(itemId).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        if (item.sessionId != id) throw ResponseStatusException(HttpStatus.NOT_FOUND)
+
+        val name = request.name.trim()
+        if (name.isBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Name required")
+        if (request.price <= BigDecimal.ZERO) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price must be positive")
+        if (request.quantity < 1) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be >= 1")
+
+        val updated = item.copy(name = name, price = request.price, quantity = request.quantity)
+        itemRepository.save(updated).awaitSingle()
+        val sharerIds = claimRepository.findByItemId(itemId).collectList().awaitSingle().map { it.participantId }
+        return updated.toDto(sharerIds)
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    suspend fun deleteItem(
+        @PathVariable id: UUID,
+        @PathVariable itemId: UUID,
+        exchange: ServerWebExchange
+    ) {
+        exchange.telegramUserId() // auth check
+        val item = itemRepository.findById(itemId).awaitSingleOrNull()
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        if (item.sessionId != id) throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        // claims removed via FK ON DELETE CASCADE
+        itemRepository.deleteById(itemId).awaitSingleOrNull()
+    }
+
     @GetMapping("/{id}/results")
     suspend fun getResults(@PathVariable id: UUID, exchange: ServerWebExchange): ResultsDto {
         exchange.telegramUserId() // auth check only

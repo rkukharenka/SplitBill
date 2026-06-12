@@ -1,4 +1,15 @@
-export function createAddItemModal(onSubmit: (name: string, price: number, quantity: number) => void): HTMLElement {
+export interface ItemModalOptions {
+  title?: string
+  submitLabel?: string
+  name?: string
+  price?: number
+  quantity?: number
+}
+
+export function createAddItemModal(
+  onSubmit: (name: string, price: number, quantity: number) => void,
+  opts: ItemModalOptions = {},
+): HTMLElement {
   const overlay = document.createElement('div')
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:100'
 
@@ -6,13 +17,13 @@ export function createAddItemModal(onSubmit: (name: string, price: number, quant
   sheet.style.cssText = 'background:var(--tg-theme-bg-color,#fff);width:100%;padding:20px;border-radius:16px 16px 0 0'
 
   sheet.innerHTML = `
-    <h3 style="margin-bottom:16px">Добавить позицию</h3>
-    <input id="item-name" type="text" placeholder="Название" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
-    <input id="item-price" type="number" step="0.01" min="0.01" placeholder="Цена" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
-    <input id="item-qty" type="number" min="1" value="1" placeholder="Количество" style="width:100%;padding:10px;margin-bottom:16px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
+    <h3 style="margin-bottom:16px">${opts.title ?? 'Добавить позицию'}</h3>
+    <input id="item-name" type="text" placeholder="Название" value="${opts.name ?? ''}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
+    <input id="item-price" type="number" step="0.01" min="0.01" placeholder="Цена" value="${opts.price ?? ''}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
+    <input id="item-qty" type="number" min="1" value="${opts.quantity ?? 1}" placeholder="Количество" style="width:100%;padding:10px;margin-bottom:16px;border:1px solid #ccc;border-radius:8px;font-size:16px" />
     <div style="display:flex;gap:8px">
       <button id="modal-cancel" style="flex:1;padding:12px;border:none;border-radius:8px;background:#eee;font-size:16px">Отмена</button>
-      <button id="modal-submit" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff);font-size:16px">Добавить</button>
+      <button id="modal-submit" style="flex:1;padding:12px;border:none;border-radius:8px;background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff);font-size:16px">${opts.submitLabel ?? 'Добавить'}</button>
     </div>
   `
 
