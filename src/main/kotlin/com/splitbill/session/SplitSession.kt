@@ -16,7 +16,7 @@ data class SplitSession(
     @field:Id @get:JvmName("_id") val id: UUID,
     @Column("creator_telegram_id") val creatorTelegramId: Long,
     val status: String = "ACTIVE",
-    val currency: String = "RUB",
+    val currency: String = "BYN",
     @Column("tip_percent") val tipPercent: BigDecimal = BigDecimal.ZERO,
     @Column("chat_id") val chatId: Long? = null,
     @Column("created_at") val createdAt: Instant = Instant.now(),

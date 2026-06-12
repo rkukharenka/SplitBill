@@ -19,12 +19,12 @@ class ReceiptParserService(
         private const val CONFIDENCE_THRESHOLD = 0.70
         private const val SYSTEM_PROMPT = """Ты — парсер кассовых чеков. Получаешь фото чека и возвращаешь ТОЛЬКО JSON, без markdown, без пояснений.
 Формат ответа:
-{"items":[{"name":"название","price":123.45,"quantity":1}],"currency":"RUB","confidence":0.95}
+{"items":[{"name":"название","price":123.45,"quantity":1}],"currency":"BYN","confidence":0.95}
 Правила:
 - currency — ISO 4217 код валюты из чека (RUB, USD, EUR, GEL, KZT и т.д.)
 - price — итоговая цена за позицию (уже умноженная на quantity, если quantity > 1)
 - confidence — от 0.0 до 1.0, отражает качество распознавания
-- Если не можешь распознать чек — верни {"items":[],"currency":"RUB","confidence":0.0}"""
+- Если не можешь распознать чек — верни {"items":[],"currency":"BYN","confidence":0.0}"""
     }
 
     fun parse(imageBytes: ByteArray, mimeType: String): ReceiptResult {
@@ -86,14 +86,14 @@ class ReceiptParserService(
                 confidence = dto.confidence
             )
         } catch (_: Exception) {
-            ReceiptResult(items = emptyList(), currency = "RUB", confidence = 0.0)
+            ReceiptResult(items = emptyList(), currency = "BYN", confidence = 0.0)
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private data class ReceiptResultDto(
         val items: List<ItemDto> = emptyList(),
-        val currency: String = "RUB",
+        val currency: String = "BYN",
         val confidence: Double = 0.0
     )
 
