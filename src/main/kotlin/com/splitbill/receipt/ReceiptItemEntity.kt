@@ -1,6 +1,7 @@
 package com.splitbill.receipt
 
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.PersistenceCreator
 import org.springframework.data.annotation.Transient
 import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Column
@@ -20,6 +21,17 @@ data class ReceiptItemEntity(
     @Column("created_at") val createdAt: Instant = Instant.now(),
     @Transient val isNewEntity: Boolean = true
 ) : Persistable<UUID> {
+    @PersistenceCreator
+    constructor(
+        id: UUID,
+        sessionId: UUID,
+        name: String,
+        price: BigDecimal,
+        quantity: Int,
+        uploadedBy: UUID?,
+        createdAt: Instant
+    ) : this(id, sessionId, name, price, quantity, uploadedBy, createdAt, isNewEntity = false)
+
     override fun getId(): UUID = id
     override fun isNew(): Boolean = isNewEntity
 

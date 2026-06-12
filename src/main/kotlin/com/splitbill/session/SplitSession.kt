@@ -1,6 +1,7 @@
 package com.splitbill.session
 
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.PersistenceCreator
 import org.springframework.data.annotation.Transient
 import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Column
@@ -22,6 +23,20 @@ data class SplitSession(
     @Column("expires_at") val expiresAt: Instant,
     @Transient val isNewEntity: Boolean = true
 ) : Persistable<UUID> {
+    // R2DBC uses this constructor when materializing a loaded row → isNew = false (UPDATE on save).
+    // App code uses the primary constructor (isNewEntity defaults true → INSERT on save).
+    @PersistenceCreator
+    constructor(
+        id: UUID,
+        creatorTelegramId: Long,
+        status: String,
+        currency: String,
+        tipPercent: BigDecimal,
+        chatId: Long?,
+        createdAt: Instant,
+        expiresAt: Instant
+    ) : this(id, creatorTelegramId, status, currency, tipPercent, chatId, createdAt, expiresAt, isNewEntity = false)
+
     override fun getId(): UUID = id
     override fun isNew(): Boolean = isNewEntity
 

@@ -1,6 +1,7 @@
 package com.splitbill.participant
 
 import org.springframework.data.annotation.Id
+import org.springframework.data.annotation.PersistenceCreator
 import org.springframework.data.annotation.Transient
 import org.springframework.data.domain.Persistable
 import org.springframework.data.relational.core.mapping.Column
@@ -18,6 +19,16 @@ data class Participant(
     @Column("joined_at") val joinedAt: Instant = Instant.now(),
     @Transient val isNewEntity: Boolean = true
 ) : Persistable<UUID> {
+    @PersistenceCreator
+    constructor(
+        id: UUID,
+        sessionId: UUID,
+        telegramId: Long?,
+        guestName: String?,
+        paymentRequisites: String?,
+        joinedAt: Instant
+    ) : this(id, sessionId, telegramId, guestName, paymentRequisites, joinedAt, isNewEntity = false)
+
     override fun getId(): UUID = id
     override fun isNew(): Boolean = isNewEntity
 
