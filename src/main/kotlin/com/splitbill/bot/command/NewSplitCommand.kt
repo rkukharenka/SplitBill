@@ -46,11 +46,13 @@ class NewSplitCommand(
                 .webApp(WebAppInfo("${botProperties.webappUrl}/webapp/index.html?session=${session.id}"))
                 .build()
         } else {
-            // Open the bot in private via a /start deep link; StartCommand then shows a web_app
-            // button there. Avoids needing a BotFather Main Mini App for in-group launch.
+            // Groups/channels: open the Mini App directly via a startapp deep link. Requires a
+            // BotFather Main Mini App to be configured for this bot; the app reads the session id
+            // from start_param. (If the app isn't configured, Telegram falls back to opening the
+            // bot in private with /start <sessionId>, which StartCommand also handles.)
             InlineKeyboardButton.builder()
                 .text("Открыть приложение")
-                .url("https://t.me/$botUsername?start=${session.id}")
+                .url("https://t.me/$botUsername?startapp=${session.id}")
                 .build()
         }
 
