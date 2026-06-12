@@ -25,7 +25,7 @@ class NewSplitCommand(
         val session = runBlocking {
             sessionService.createEmptySession(
                 creatorTelegramId = creatorId,
-                currency = "RUB",
+                currency = "BYN",
                 chatId = chatId
             )
         }
@@ -39,7 +39,7 @@ class NewSplitCommand(
 
         val message = SendMessage.builder()
             .chatId(chatId.toString())
-            .text("Сессия создана! Добавляйте чеки и отмечайте свои позиции.")
+            .text("Сессия создана! Откройте приложение, чтобы добавить позиции и разделить счёт.")
             .replyMarkup(InlineKeyboardMarkup(listOf(InlineKeyboardRow(button))))
             .build()
 
