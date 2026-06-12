@@ -30,14 +30,19 @@ class WebAppAuthFilter(private val botToken: String) : WebFilter {
         val initData = exchange.request.headers.getFirst("X-Telegram-Init-Data")
             ?: return Mono.error(ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing X-Telegram-Init-Data"))
 
-        val userId = validateAndExtractUserId(initData)
+        val user = validateAndExtractUser(initData)
             ?: return Mono.error(ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid initData"))
 
-        exchange.attributes["telegramUserId"] = userId
+        exchange.attributes["telegramUserId"] = user.id
+        user.displayName?.let { exchange.attributes["telegramDisplayName"] = it }
         return chain.filter(exchange)
     }
 
-    fun validateAndExtractUserId(initData: String): Long? {
+    data class TelegramUser(val id: Long, val displayName: String?)
+
+    fun validateAndExtractUserId(initData: String): Long? = validateAndExtractUser(initData)?.id
+
+    fun validateAndExtractUser(initData: String): TelegramUser? {
         val params = mutableMapOf<String, String>()
         for (pair in initData.split("&")) {
             val idx = pair.indexOf('=')
@@ -58,7 +63,13 @@ class WebAppAuthFilter(private val botToken: String) : WebFilter {
 
         val userJson = params["user"] ?: return null
         return try {
-            objectMapper.readTree(userJson)?.get("id")?.asLong()
+            val node = objectMapper.readTree(userJson) ?: return null
+            val id = node.get("id")?.asLong() ?: return null
+            val first = node.get("first_name")?.asText(null)?.ifBlank { null }
+            val last = node.get("last_name")?.asText(null)?.ifBlank { null }
+            val username = node.get("username")?.asText(null)?.ifBlank { null }
+            val displayName = listOfNotNull(first, last).joinToString(" ").ifBlank { null } ?: username
+            TelegramUser(id, displayName)
         } catch (_: Exception) {
             null
         }

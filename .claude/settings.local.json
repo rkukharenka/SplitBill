@@ -108,7 +108,12 @@
       "Bash(pkill -f \"L 15432:172.18.0.3\")",
       "Bash(pkill -f \"L /home/ryhor/.docker/desktop/docker.sock\")",
       "Bash(pkill -f \"ssh -fN\")",
-      "Bash(kill 76320 80846)"
+      "Bash(kill 76320 80846)",
+      "Bash(./gradlew compileTestKotlin)",
+      "Bash(python3 -c \"import socket;[socket.create_connection\\(\\('localhost',p\\),3\\).close\\(\\) or print\\('port',p,'OK'\\) for p in \\(15432,16379\\)]\")",
+      "Bash(pkill -f \"L 15432:172\")",
+      "Bash(pkill -f \"SplitBill-1.0-SNAPSHOT.jar\")",
+      "Bash(kill 114051)"
     ],
     "deny": [
       "Read(.env)",
