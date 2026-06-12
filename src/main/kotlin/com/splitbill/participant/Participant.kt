@@ -15,6 +15,7 @@ data class Participant(
     @Column("session_id") val sessionId: UUID,
     @Column("telegram_id") val telegramId: Long? = null,
     @Column("guest_name") val guestName: String? = null,
+    @Column("display_name") val displayName: String? = null,
     @Column("payment_requisites") val paymentRequisites: String? = null,
     @Column("joined_at") val joinedAt: Instant = Instant.now(),
     @Transient val isNewEntity: Boolean = true
@@ -25,16 +26,17 @@ data class Participant(
         sessionId: UUID,
         telegramId: Long?,
         guestName: String?,
+        displayName: String?,
         paymentRequisites: String?,
         joinedAt: Instant
-    ) : this(id, sessionId, telegramId, guestName, paymentRequisites, joinedAt, isNewEntity = false)
+    ) : this(id, sessionId, telegramId, guestName, displayName, paymentRequisites, joinedAt, isNewEntity = false)
 
     override fun getId(): UUID = id
     override fun isNew(): Boolean = isNewEntity
 
     companion object {
-        fun telegram(sessionId: UUID, telegramId: Long): Participant =
-            Participant(id = UUID.randomUUID(), sessionId = sessionId, telegramId = telegramId)
+        fun telegram(sessionId: UUID, telegramId: Long, displayName: String? = null): Participant =
+            Participant(id = UUID.randomUUID(), sessionId = sessionId, telegramId = telegramId, displayName = displayName)
 
         fun guest(sessionId: UUID, guestName: String): Participant =
             Participant(id = UUID.randomUUID(), sessionId = sessionId, guestName = guestName)

@@ -47,6 +47,14 @@ class WebAppAuthFilterTest {
     }
 
     @Test
+    fun `valid initData extracts display name from first_name`() {
+        val initData = buildValidInitData(botToken, userId = 42L, firstName = "Alice")
+        val user = filter.validateAndExtractUser(initData)
+        assertEquals(42L, user?.id)
+        assertEquals("Alice", user?.displayName)
+    }
+
+    @Test
     fun `wrong bot token returns null`() {
         val initData = buildValidInitData("wrong-token", userId = 42L)
         val result = filter.validateAndExtractUserId(initData)

@@ -38,8 +38,7 @@ class WebAppController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
         // auto-create caller's participant BEFORE listing the roster so they appear in it
-        val me = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
-            ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
+        val me = resolveParticipant(id, userId, exchange.telegramDisplayName())
 
         val participants = participantRepository.findBySessionId(id).collectList().awaitSingle()
         val items = itemRepository.findBySessionId(id).collectList().awaitSingle()
@@ -67,8 +66,7 @@ class WebAppController(
         val session = sessionRepository.findById(id).awaitSingleOrNull()
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
-            ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
+        val participant = resolveParticipant(id, userId, exchange.telegramDisplayName())
 
         val entity = ReceiptItemEntity(
             id = UUID.randomUUID(),
@@ -91,8 +89,7 @@ class WebAppController(
         val session = sessionRepository.findById(id).awaitSingleOrNull()
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
 
-        val participant = participantRepository.findBySessionIdAndTelegramId(id, userId).awaitSingleOrNull()
-            ?: participantRepository.save(Participant.telegram(id, userId)).awaitSingle()
+        val participant = resolveParticipant(id, userId, exchange.telegramDisplayName())
 
         val bytes = filePart.content()
             .map { buf ->
@@ -187,7 +184,7 @@ class WebAppController(
                 }
             ParticipantSummaryDto(
                 id = p.id,
-                displayName = p.guestName ?: "User ${p.telegramId}",
+                displayName = p.guestName ?: p.displayName ?: "User ${p.telegramId}",
                 totalAmount = totalAmount
             )
         }
@@ -206,7 +203,7 @@ class WebAppController(
 
             ParticipantBalance(
                 participantId = p.id,
-                displayName = p.guestName ?: "User ${p.telegramId}",
+                displayName = p.guestName ?: p.displayName ?: "User ${p.telegramId}",
                 balance = paid.subtract(owedFromPaidItems)
             )
         }
@@ -222,9 +219,22 @@ class WebAppController(
         getAttribute<Long>("telegramUserId")
             ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
 
+    private fun ServerWebExchange.telegramDisplayName(): String? = getAttribute<String>("telegramDisplayName")
+
+    // find-or-create the caller's participant; refresh display name if Telegram now reports a different one
+    private suspend fun resolveParticipant(sessionId: UUID, userId: Long, displayName: String?): Participant {
+        val existing = participantRepository.findBySessionIdAndTelegramId(sessionId, userId).awaitSingleOrNull()
+        if (existing != null) {
+            return if (displayName != null && existing.guestName == null && existing.displayName != displayName)
+                participantRepository.save(existing.copy(displayName = displayName)).awaitSingle()
+            else existing
+        }
+        return participantRepository.save(Participant.telegram(sessionId, userId, displayName)).awaitSingle()
+    }
+
     private fun ReceiptItemEntity.toDto(sharerIds: List<UUID>) =
         ItemDto(id, name, price, quantity, uploadedBy, sharerIds)
 
     private fun Participant.toDto() =
-        ParticipantDto(id, guestName ?: "User $telegramId", guestName != null)
+        ParticipantDto(id, guestName ?: displayName ?: "User $telegramId", guestName != null)
 }
