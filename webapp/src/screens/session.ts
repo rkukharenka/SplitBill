@@ -60,7 +60,7 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
     const roster = container.querySelector('#roster')!
     session.participants.forEach(p => {
       const chip = document.createElement('span')
-      chip.style.cssText = 'padding:4px 10px;border-radius:14px;background:#f0f0f0;font-size:13px'
+      chip.style.cssText = 'padding:4px 10px;border-radius:14px;background:#e4e9f0;font-size:13px;font-weight:600;color:#1c1c1c'
       chip.textContent = p.isGuest ? `👤 ${p.displayName}` : p.displayName
       roster.appendChild(chip)
     })
@@ -86,7 +86,7 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
       row.style.cssText = 'padding:12px 0;border-bottom:1px solid #f0f0f0'
       row.innerHTML = `
         <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:15px">${item.name}</span>
+          <span style="font-size:15px;font-weight:600;color:var(--tg-theme-text-color,#1c1c1c)">${item.name}</span>
           <span style="font-size:13px;color:#888">${formatPrice(item)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
@@ -105,9 +105,22 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
       })
 
       const sharers = row.querySelector('.sharers')!
+
+      // "Все" toggle — select/clear every roster member at once
+      const allLabel = document.createElement('label')
+      allLabel.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;color:var(--tg-theme-text-color,#1c1c1c)'
+      const allChecked = session.participants.length > 0 && session.participants.every(p => item.sharerIds.includes(p.id))
+      allLabel.innerHTML = `<input type="checkbox" ${allChecked ? 'checked' : ''} style="width:16px;height:16px" /> Все`
+      allLabel.querySelector('input')!.addEventListener('change', (e) => {
+        item.sharerIds = (e.target as HTMLInputElement).checked ? session.participants.map(p => p.id) : []
+        persist(item)
+        render()
+      })
+      sharers.appendChild(allLabel)
+
       session.participants.forEach(p => {
         const label = document.createElement('label')
-        label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:13px'
+        label.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:13px;color:var(--tg-theme-text-color,#1c1c1c)'
         const checked = item.sharerIds.includes(p.id)
         label.innerHTML = `<input type="checkbox" ${checked ? 'checked' : ''} style="width:16px;height:16px" /> ${p.displayName}`
         const cb = label.querySelector('input')!
@@ -118,6 +131,7 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
             item.sharerIds = item.sharerIds.filter(idv => idv !== p.id)
           }
           persist(item)
+          render()
         })
         sharers.appendChild(label)
       })
