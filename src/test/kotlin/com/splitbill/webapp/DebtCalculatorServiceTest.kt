@@ -61,4 +61,33 @@ class DebtCalculatorServiceTest {
 
         assertTrue(transfers.isEmpty(), "Sub-cent differences should not generate transfers")
     }
+
+    @Test
+    fun `guest payer becomes creditor`() {
+        // Guest paid 60 for an item shared by guest + two users (20 each).
+        // balances: guest = 60 - 20 = +40 ; userA = -20 ; userB = -20
+        val guest = balance("Guest", 40.0)
+        val a = balance("A", -20.0)
+        val b = balance("B", -20.0)
+
+        val transfers = service.calculate(listOf(guest, a, b))
+
+        assertEquals(2, transfers.size)
+        assertTrue(transfers.all { it.toName == "Guest" })
+        assertEquals(BigDecimal("40.0"), transfers.sumOf { it.amount })
+    }
+
+    @Test
+    fun `multi-sharer item splits equally`() {
+        // Item 90 paid by A, shared A/B/C → 30 each. A balance = 90 - 30 = +60.
+        val a = balance("A", 60.0)
+        val b = balance("B", -30.0)
+        val c = balance("C", -30.0)
+
+        val transfers = service.calculate(listOf(a, b, c))
+
+        assertEquals(2, transfers.size)
+        assertTrue(transfers.all { it.toName == "A" })
+        assertEquals(BigDecimal("60.0"), transfers.sumOf { it.amount })
+    }
 }

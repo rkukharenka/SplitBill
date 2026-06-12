@@ -1,4 +1,4 @@
-import type { SessionDto, ItemDto, ResultsDto } from './types'
+import type { SessionDto, ItemDto, ParticipantDto, ResultsDto } from './types'
 
 declare global {
   interface Window {
@@ -58,13 +58,27 @@ export async function uploadPhoto(sessionId: string, file: File): Promise<ItemDt
   return handleResponse<ItemDto[]>(res)
 }
 
-export async function updateClaims(sessionId: string, itemIds: string[]): Promise<string[]> {
-  const res = await fetch(`${BASE}/${sessionId}/claims`, {
+export async function setItemAssignment(
+  sessionId: string,
+  itemId: string,
+  payerId: string,
+  sharerIds: string[],
+): Promise<ItemDto> {
+  const res = await fetch(`${BASE}/${sessionId}/items/${itemId}/assignment`, {
     method: 'PUT',
     headers: headers(),
-    body: JSON.stringify({ itemIds }),
+    body: JSON.stringify({ payerId, sharerIds }),
   })
-  return handleResponse<string[]>(res)
+  return handleResponse<ItemDto>(res)
+}
+
+export async function addParticipant(sessionId: string, name: string): Promise<ParticipantDto> {
+  const res = await fetch(`${BASE}/${sessionId}/participants`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ name }),
+  })
+  return handleResponse<ParticipantDto>(res)
 }
 
 export async function getResults(sessionId: string): Promise<ResultsDto> {
