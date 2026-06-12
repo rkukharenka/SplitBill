@@ -42,7 +42,7 @@ class WebAppAuthFilter(private val botToken: String) : WebFilter {
         for (pair in initData.split("&")) {
             val idx = pair.indexOf('=')
             if (idx < 0) continue
-            params[pair.substring(0, idx)] = pair.substring(idx + 1)
+            params[pair.substring(0, idx)] = URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
         }
 
         val hash = params.remove("hash") ?: return null
@@ -56,7 +56,7 @@ class WebAppAuthFilter(private val botToken: String) : WebFilter {
 
         if (!MessageDigest.isEqual(hash.toByteArray(Charsets.UTF_8), expectedHash.toByteArray(Charsets.UTF_8))) return null
 
-        val userJson = params["user"]?.let { URLDecoder.decode(it, "UTF-8") } ?: return null
+        val userJson = params["user"] ?: return null
         return try {
             objectMapper.readTree(userJson)?.get("id")?.asLong()
         } catch (_: Exception) {

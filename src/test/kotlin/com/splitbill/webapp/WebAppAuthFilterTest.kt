@@ -18,13 +18,16 @@ class WebAppAuthFilterTest {
             val encodedUser = URLEncoder.encode(userJson, "UTF-8")
             val authDate = Instant.now().epochSecond.toString()
 
-            val params = sortedMapOf("auth_date" to authDate, "user" to encodedUser)
-            val dataCheckString = params.entries.joinToString("\n") { "${it.key}=${it.value}" }
+            // data_check_string signs DECODED values (Telegram spec)
+            val signParams = sortedMapOf("auth_date" to authDate, "user" to userJson)
+            val dataCheckString = signParams.entries.joinToString("\n") { "${it.key}=${it.value}" }
 
             val secretKey = hmacSha256("WebAppData".toByteArray(), botToken.toByteArray())
             val hash = hmacSha256(secretKey, dataCheckString.toByteArray()).toHex()
 
-            return params.entries.joinToString("&") { "${it.key}=${it.value}" } + "&hash=$hash"
+            // querystring carries ENCODED values
+            val queryParams = sortedMapOf("auth_date" to authDate, "user" to encodedUser)
+            return queryParams.entries.joinToString("&") { "${it.key}=${it.value}" } + "&hash=$hash"
         }
 
         private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
