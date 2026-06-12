@@ -1,5 +1,5 @@
 import type { SessionDto, ItemDto } from '../types'
-import { getSession, addItem, uploadPhoto, setItemAssignment, addParticipant } from '../api'
+import { getSession, addItem, updateItem, deleteItem, uploadPhoto, setItemAssignment, addParticipant } from '../api'
 import { createAddItemModal } from '../components/addItemModal'
 
 export async function renderSession(container: HTMLElement, sessionId: string, onResults: () => void) {
@@ -85,9 +85,13 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
       const row = document.createElement('div')
       row.style.cssText = 'padding:12px 0;border-bottom:1px solid #f0f0f0'
       row.innerHTML = `
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:15px;font-weight:600;color:var(--tg-theme-text-color,#1c1c1c)">${item.name}</span>
-          <span style="font-size:13px;color:#888">${formatPrice(item)}</span>
+          <span style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:13px;color:#888">${formatPrice(item)}</span>
+            <button class="edit-btn" style="border:none;background:none;font-size:16px;padding:2px;cursor:pointer">✏️</button>
+            <button class="del-btn" style="border:none;background:none;font-size:16px;padding:2px;cursor:pointer">🗑</button>
+          </span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
           <span style="font-size:12px;color:#888">Платил:</span>
@@ -134,6 +138,35 @@ export async function renderSession(container: HTMLElement, sessionId: string, o
           render()
         })
         sharers.appendChild(label)
+      })
+
+      row.querySelector('.edit-btn')!.addEventListener('click', () => {
+        const modal = createAddItemModal(
+          async (name, price, quantity) => {
+            try {
+              const saved = await updateItem(sessionId, item.id, name, price, quantity)
+              item.name = saved.name
+              item.price = saved.price
+              item.quantity = saved.quantity
+              render()
+            } catch (err) {
+              alert(`Ошибка: ${(err as Error).message}`)
+            }
+          },
+          { title: 'Редактировать позицию', submitLabel: 'Сохранить', name: item.name, price: item.price, quantity: item.quantity },
+        )
+        document.body.appendChild(modal)
+      })
+
+      row.querySelector('.del-btn')!.addEventListener('click', async () => {
+        if (!confirm(`Удалить «${item.name}»?`)) return
+        try {
+          await deleteItem(sessionId, item.id)
+          session.items = session.items.filter(i => i.id !== item.id)
+          render()
+        } catch (err) {
+          alert(`Ошибка: ${(err as Error).message}`)
+        }
       })
 
       list.appendChild(row)
