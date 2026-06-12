@@ -46,9 +46,11 @@ class NewSplitCommand(
                 .webApp(WebAppInfo("${botProperties.webappUrl}/webapp/index.html?session=${session.id}"))
                 .build()
         } else {
+            // Open the bot in private via a /start deep link; StartCommand then shows a web_app
+            // button there. Avoids needing a BotFather Main Mini App for in-group launch.
             InlineKeyboardButton.builder()
                 .text("Открыть приложение")
-                .url("https://t.me/$botUsername?startapp=${session.id}")
+                .url("https://t.me/$botUsername?start=${session.id}")
                 .build()
         }
 
